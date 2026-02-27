@@ -3,7 +3,7 @@ import Lazy
 
 abstract type SignedHalfBit end
 
-abstract type SignedBit<:SignedHalfBit end
+abstract type SignedBit <: SignedHalfBit end
 struct One <: SignedBit end
 struct Zero <: SignedBit end
 struct NegOne <: SignedBit end
@@ -31,20 +31,16 @@ struct NegHalf <: SignedHalfBit end
 Base.:-(::Half) = NegHalf()
 Base.:-(::NegHalf) = Half()
 
-is_whole(::SignedBit) = true
-is_whole(::SignedHalfBit) = false
 
-average(::T, ::T) where T<:SignedBit = T()
-average(::One, ::NegOne) = Zero()
-average(::NegOne, ::One) = Zero()
-average(::Zero, ::One) = Half()
-average(::One, ::Zero) = Half()
-average(::Zero, ::NegOne) = NegHalf()
-average(::NegOne, ::Zero) = NegHalf()
+bit_average(first::SignedBit, second::SignedBit) = bit_average(second, first) # commutative
+bit_average(::T, ::T) where T<:SignedBit = T()
+bit_average(::NegOne, ::One) = Zero()
+bit_average(::Zero, ::One) = Half()
+bit_average(::NegOne, ::Zero) = NegHalf()
 
 function average_half_bits(xs::Lazy.List, ys::Lazy.List)
     Lazy.@lazy Lazy.isempty(xs) ?  ys : Lazy.isempty(ys) ? xs :
-    average(Lazy.first(xs), Lazy.first(ys)) : average_half_bits(Lazy.tail(xs), Lazy.tail(ys))
+    bit_average(Lazy.first(xs), Lazy.first(ys)) : average_half_bits(Lazy.tail(xs), Lazy.tail(ys))
 end
 
 Base.:+(::SignedBit, ::SignedHalfBit) = error("Out of range on signed-bit addition")
@@ -59,12 +55,14 @@ direction(b::SignedBit) = b
 direction(::Half) = One()
 direction(::NegHalf) = NegOne()
 
+as_bit_list(h::SignedHalfBit) = List(Zero(), direction(h))
+as_bit_list(b::SignedBit) = List(b)
+
 bit_and_carry(target::SignedHalfBit, next::SignedHalfBit) = bit_and_carry(target, direction(next))
 bit_and_carry(target::SignedBit, ::SignedHalfBit) = (target, Zero())
-bit_and_carry(target::SignedHalfBit, ::Zero) = (direction(target), direction(target))
+bit_and_carry(::Half,::SignedBit) = (Zero(), One())
 bit_and_carry(::Half, ::One) = (One(), NegOne())
-bit_and_carry(::Half, ::NegOne) = (Zero(), One())
-bit_and_carry(::NegHalf, ::One) = (Zero(), NegOne())
+bit_and_carry(::NegHalf, ::SignedBit) = (Zero(), NegOne())
 bit_and_carry(::NegHalf, ::NegOne) = (NegOne(), One())
 
 
@@ -72,7 +70,7 @@ function dehalf_bits(xs::Lazy.List, carry::SignedBit = Zero())
     Lazy.isempty(xs) && return Lazy.list()  
     target = carry + Lazy.first(xs)
     tail = Lazy.tail(xs)
-    Lazy.isempty(tail) && return is_whole(target) ? Lazy.list(target) : Lazy.list(Zero(), direction(target))
+    Lazy.isempty(tail) && return as_bit_list(target)
     (next, carry) = bit_and_carry(target, Lazy.first(tail))
     return Lazy.@lazy next : dehalf_bits(tail, carry)
 
