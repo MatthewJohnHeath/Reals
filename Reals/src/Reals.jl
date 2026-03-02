@@ -53,7 +53,10 @@ Base.:+(::One, ::One) = error("Out of range of SmallHalfInteger")
 Base.:+(::One, ::NegOne) = Zero()
 Base.:+(::One, ::Half) = ThreeHalves()
 Base.:+(::One, ::NegHalf) = Half()
-Base.:+(::NegOne, x::SignedHalfBit) = - (One() + (-x))
+Base.:+(::NegOne, x::One) = Zero()
+Base.:+(::NegOne, ::NegOne) = error("Out of range of SmallHalfInteger")
+Base.:+(::NegOne, ::Half) = NegHalf()
+Base.:+(::NegOne, ::NegHalf) = NegThreeHalves()
 
 
 bit_and_carry(target::SignedBit, ::SignedHalfBit) = (target, Zero())
@@ -86,6 +89,7 @@ function product_loop(xs::Lazy.List, ys::Lazy.List, acc::Lazy.List)
     return Lazy.@lazy head(partial_sum) : product_loop(tail(xs) , ys, tail(partial_sum))
 end
 
+times(xs::Lazy.List, ys::Lazy.List) = product_loop(xs, ys, zeroes)
 
 
 end # module Reals
