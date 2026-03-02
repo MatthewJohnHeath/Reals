@@ -19,11 +19,13 @@ function concat_all(xs::Lazy.List)
     Lazy.first(xs) : concat_all(Lazy.tail(xs))
 end
 
+Base.:-(::ThreeHalves) = NegThreeHalves()
 Base.:-(::One) = NegOne()
 Base.:-(::Half) = NegHalf()
 Base.:-(::Zero) = Zero()
 Base.:-(::NegOne) = One()
 Base.:-(::NegHalf) = Half()
+Base.:-(::NegThreeHalves) = ThreeHalves()
 """
     Base.:-(x::Lazy.LazyList)
 
@@ -80,7 +82,7 @@ Base.:*(::One, xs::Lazy.List) = xs
 Base.:*(::NegOne, xs::Lazy.List) = -xs
 
 function product_loop(xs::Lazy.List, ys::Lazy.List, acc::Lazy.List)
-    partial_sum = unsafe_add(acc, 0 : head(xs) * ys) 
+    partial_sum = unsafe_add(acc, Zero() : head(xs) * ys) 
     return Lazy.@lazy head(partial_sum) : product_loop(tail(xs) , ys, tail(partial_sum))
 end
 
