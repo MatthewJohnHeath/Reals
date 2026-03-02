@@ -38,9 +38,12 @@ bit_average(::NegOne, ::One) = Zero()
 bit_average(::Zero, ::One) = Half()
 bit_average(::NegOne, ::Zero) = NegHalf()
 
+first(xs::Lazy.List) = Lazy.isempty(xs) ?  Zero() : Lazy.first(xs)
+tail(xs::Lazy.List) = Lazy.isempty(xs) ? Lazy.list() : Lazy.tail(xs)
+
 function average_half_bits(xs::Lazy.List, ys::Lazy.List)
-    Lazy.@lazy Lazy.isempty(xs) ?  ys : Lazy.isempty(ys) ? xs :
-    bit_average(Lazy.first(xs), Lazy.first(ys)) : average_half_bits(Lazy.tail(xs), Lazy.tail(ys))
+    Lazy.isempty(xs) && Lazy.isempty(ys) && return Lazy.list() 
+    return Lazy.@lazy bit_average(first(xs), first(ys)) : average_half_bits(tail(xs), tail(ys))
 end
 
 Base.:+(::Zero, h::Zero) = h
@@ -70,27 +73,25 @@ bit_and_carry(::NegThreeHalves, ::SignedHalfBit) = (NegOne(), NegOne())
 function dehalf_bits(xs::Lazy.List, carry::SignedBit = Zero())
     Lazy.isempty(xs) && return Lazy.list()  
     target = carry + Lazy.first(xs)
-    tail = Lazy.tail(xs)
-    Lazy.isempty(tail) && return as_bit_list(target)
-    (next, carry) = bit_and_carry(target, Lazy.first(tail))
-    return Lazy.@lazy next : dehalf_bits(tail, carry)
+    rest = Lazy.tail(xs)
+    Lazy.isempty(rest) && return as_bit_list(target)
+    (next, carry) = bit_and_carry(target, Lazy.first(rest))
+    return Lazy.@lazy next : dehalf_bits(rest, carry)
 end
 
 average(xs::Lazy.List, ys::Lazy.List) = dehalf_bits(average_half_bits(xs, ys))
 
-unsafe_add(xs::Lazy.List, ys::Lazy.List) = Lazy.tail(average(xs, ys))
+unsafe_add(xs::Lazy.List, ys::Lazy.List) = tail(average(xs, ys))
 
 Base.:*(::Zero, ::Lazy.List) = Lazy.list()
 Base.:*(::One, xs::Lazy.List) = xs
 Base.:*(::NegOne, xs::Lazy.List) = -xs
 
-function product_summands(xs::Lazy.List, ys::Lazy.List, right_shift = 1)
+function Base.:*(xs::Lazy.List, ys::Lazy.List)
     Lazy.isempty(xs) && return Lazy.list()
     head = Lazy.first(xs)
     tail = Lazy.tail(xs)
-    unshifted_summand = head * ys
-    summand = Lazy.repeat(Zero(), right_shift) : unshifted_summand
-    return Lazy.@lazy summand : product_summands(tail, ys, right_shift + 1)
+    return Lazy.@lazy unsafe_add(xs, 0 : head * ys) : (tail * ys)
 end
 
 zeroes = Lazy.@lazy Zero() : zeroes
