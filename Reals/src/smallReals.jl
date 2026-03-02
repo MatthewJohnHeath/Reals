@@ -1,4 +1,3 @@
-module Reals
 import Lazy
 
 abstract type SmallHalfInteger end
@@ -90,6 +89,3 @@ function product_loop(xs::Lazy.List, ys::Lazy.List, acc::Lazy.List)
 end
 
 times(xs::Lazy.List, ys::Lazy.List) = product_loop(xs, ys, zeroes)
-
-
-end # module Reals
