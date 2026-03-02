@@ -38,13 +38,11 @@ bit_average(::NegOne, ::One) = Zero()
 bit_average(::Zero, ::One) = Half()
 bit_average(::NegOne, ::Zero) = NegHalf()
 
-first(xs::Lazy.List) = Lazy.isempty(xs) ?  Zero() : Lazy.first(xs)
+head(xs::Lazy.List) = Lazy.isempty(xs) ?  Zero() : Lazy.first(xs)
 tail(xs::Lazy.List) = Lazy.isempty(xs) ? Lazy.list() : Lazy.tail(xs)
 
-function average_half_bits(xs::Lazy.List, ys::Lazy.List)
-    Lazy.isempty(xs) && Lazy.isempty(ys) && return Lazy.list() 
-    return Lazy.@lazy bit_average(first(xs), first(ys)) : average_half_bits(tail(xs), tail(ys))
-end
+average_half_bits(xs::Lazy.List, ys::Lazy.List) = Lazy.@lazy bit_average(head(xs), head(ys)) : average_half_bits(tail(xs), tail(ys))
+
 
 Base.:+(::Zero, h::Zero) = h
 Base.:+(::Zero, h::SignedHalfBit) = h
@@ -56,12 +54,6 @@ Base.:+(::One, ::NegHalf) = Half()
 Base.:+(::NegOne, x::SignedHalfBit) = - (One() + (-x))
 
 
-as_bit_list(b::SignedBit) = Lazy.list(b)
-as_bit_list(::ThreeHalves) = Lazy.list(One(), One())
-as_bit_list(::Half) = Lazy.list(Zero(), One())
-as_bit_list(::NegHalf) = Lazy.list(Zero(), NegOne())
-as_bit_list(::NegThreeHalves) = Lazy.list(NegOne(), NegOne())
-
 bit_and_carry(target::SignedBit, ::SignedHalfBit) = (target, Zero())
 bit_and_carry(::ThreeHalves, ::SignedHalfBit) = (One(), One())
 bit_and_carry(::Half, ::SignedHalfBit) = (Zero(), One())
@@ -70,32 +62,28 @@ bit_and_carry(::NegHalf, ::SignedHalfBit) = (Zero(), NegOne())
 bit_and_carry(::NegHalf, ::NegOne) = (NegOne(), One())
 bit_and_carry(::NegThreeHalves, ::SignedHalfBit) = (NegOne(), NegOne())
 
-function dehalf_bits(xs::Lazy.List, carry::SignedBit = Zero())
-    Lazy.isempty(xs) && return Lazy.list()  
-    target = carry + Lazy.first(xs)
-    rest = Lazy.tail(xs)
-    Lazy.isempty(rest) && return as_bit_list(target)
-    (next, carry) = bit_and_carry(target, Lazy.first(rest))
-    return Lazy.@lazy next : dehalf_bits(rest, carry)
+function dehalf_bits(xs::Lazy.List, carry::SignedBit = Zero()) 
+    target = carry + head(xs)
+    rest = tail(xs)
+    (bit, carry) = bit_and_carry(target, head(rest))
+    return Lazy.@lazy bit : dehalf_bits(rest, carry)
 end
 
 average(xs::Lazy.List, ys::Lazy.List) = dehalf_bits(average_half_bits(xs, ys))
 
 unsafe_add(xs::Lazy.List, ys::Lazy.List) = tail(average(xs, ys))
 
-Base.:*(::Zero, ::Lazy.List) = Lazy.list()
+zeroes = Lazy.constantly(Zero())
+
+Base.:*(::Zero, ::Lazy.List) = zeroes
 Base.:*(::One, xs::Lazy.List) = xs
 Base.:*(::NegOne, xs::Lazy.List) = -xs
 
-function Base.:*(xs::Lazy.List, ys::Lazy.List)
-    Lazy.isempty(xs) && return Lazy.list()
-    head = Lazy.first(xs)
-    tail = Lazy.tail(xs)
-    return Lazy.@lazy unsafe_add(xs, 0 : head * ys) : (tail * ys)
+function product_loop(xs::Lazy.List, ys::Lazy.List, acc::Lazy.List)
+    partial_sum = unsafe_add(acc, 0 : head(xs) * ys) 
+    return Lazy.@lazy head(partial_sum) : product_loop(tail(xs) , ys, tail(partial_sum))
 end
 
-zeroes = Lazy.@lazy Zero() : zeroes
-one = Lazy.@lazy One() : one
-long_half = Zero():one
+
 
 end # module Reals
