@@ -1,4 +1,4 @@
-name = "Reals"
+name = "StreamReals"
 uuid = "3e03955e-8b1c-44f8-9d19-8602eeb490ce"
 version = "0.1.0"
 authors = ["MatthewJohnHeath <matthew.john.heath@gmail.com>"]
