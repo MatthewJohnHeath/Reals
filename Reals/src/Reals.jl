@@ -6,14 +6,14 @@ mutable struct StreamReal <: Real
     significand::SmallReal
 end
 
-
-Base.:-(r::StreamReal) = StreamReal(r.exponent, -r.significand)
 Base.zero(::Type{<:StreamReal}) = StreamReal(0, zeroes)
 Base.zero(::StreamReal) = zero(StreamReal)
 Base.one(::Type{<:StreamReal}) = StreamReal(1, One() : zeroes)
 Base.one(::StreamReal) = one(StreamReal)
 
+Base.:-(r::StreamReal) = StreamReal(r.exponent, -r.significand)
 
+Base.:abs(r::StreamReal) = StreamReal(r.exponent, abs(r.significand))
 
 function normalize!(r::StreamReal)
     normalize_step(first::SignedBit, ::SignedBit) = (first, false)
@@ -39,6 +39,8 @@ function Base.:+(r1::StreamReal, r2::StreamReal)
     shifted = Lazy.prepend(Lazy.repeatedly(Zero(), shift_amount), to_shift.significand)
     normalize!(StreamReal(fixed.exponent, fixed.significand + shifted))
 end
+
+Base.:-(r1::StreamReal, r2::StreamReal) = r1 + (-r2)
 
 
 function concat_all(xs::Lazy.List)

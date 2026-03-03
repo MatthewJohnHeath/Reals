@@ -84,3 +84,9 @@ function product_loop(xs::SmallReal, ys::SmallReal, acc::SmallReal)
 end
 
 times(xs::SmallReal, ys::SmallReal) = product_loop(xs, ys, zeroes)
+
+function Base.abs(r::SmallReal)
+    first_bit = head(r)
+    first_bit isa Zero && return Lazy.@lazy Zero() : abs(tail(r))
+    return first_bit * r
+end
