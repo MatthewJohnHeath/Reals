@@ -13,10 +13,7 @@ struct NegHalf <: SignedHalfBit end
 struct NegOne <: SignedBit end
 struct NegThreeHalves <: SmallHalfInteger end
 
-function concat_all(xs::Lazy.List)
-    Lazy.@lazy Lazy.isempty(xs) ? Lazy.list() : 
-    Lazy.first(xs) : concat_all(Lazy.tail(xs))
-end
+
 
 Base.:-(::ThreeHalves) = NegThreeHalves()
 Base.:-(::One) = NegOne()
@@ -25,12 +22,10 @@ Base.:-(::Zero) = Zero()
 Base.:-(::NegOne) = One()
 Base.:-(::NegHalf) = Half()
 Base.:-(::NegThreeHalves) = ThreeHalves()
-"""
-    Base.:-(x::Lazy.LazyList)
 
-TBW
-"""
-Base.:-(x::Lazy.LazyList) =  Lazy.map(-, x)
+SmallReal = Lazy.List
+
+Base.:-(x::SmallReal) =  Lazy.map(-, x)
 
 
 bit_average(first::SignedBit, second::SignedBit) = bit_average(second, first) # commutative
@@ -39,10 +34,10 @@ bit_average(::NegOne, ::One) = Zero()
 bit_average(::Zero, ::One) = Half()
 bit_average(::NegOne, ::Zero) = NegHalf()
 
-head(xs::Lazy.List) = Lazy.isempty(xs) ?  Zero() : Lazy.first(xs)
-tail(xs::Lazy.List) = Lazy.isempty(xs) ? Lazy.list() : Lazy.tail(xs)
+head(xs::SmallReal) = Lazy.isempty(xs) ?  Zero() : Lazy.first(xs)
+tail(xs::SmallReal) = Lazy.isempty(xs) ? SmallReal() : Lazy.tail(xs)
 
-average_half_bits(xs::Lazy.List, ys::Lazy.List) = Lazy.@lazy bit_average(head(xs), head(ys)) : average_half_bits(tail(xs), tail(ys))
+average_half_bits(xs::SmallReal, ys::SmallReal) = Lazy.@lazy bit_average(head(xs), head(ys)) : average_half_bits(tail(xs), tail(ys))
 
 
 Base.:+(::Zero, h::Zero) = h
@@ -66,26 +61,26 @@ bit_and_carry(::NegHalf, ::SignedHalfBit) = (Zero(), NegOne())
 bit_and_carry(::NegHalf, ::NegOne) = (NegOne(), One())
 bit_and_carry(::NegThreeHalves, ::SignedHalfBit) = (NegOne(), NegOne())
 
-function dehalf_bits(xs::Lazy.List, carry::SignedBit = Zero()) 
+function dehalf_bits(xs::SmallReal, carry::SignedBit = Zero()) 
     target = carry + head(xs)
     rest = tail(xs)
     (bit, carry) = bit_and_carry(target, head(rest))
     return Lazy.@lazy bit : dehalf_bits(rest, carry)
 end
 
-average(xs::Lazy.List, ys::Lazy.List) = dehalf_bits(average_half_bits(xs, ys))
+average(xs::SmallReal, ys::SmallReal) = dehalf_bits(average_half_bits(xs, ys))
 
-unsafe_add(xs::Lazy.List, ys::Lazy.List) = tail(average(xs, ys))
+unsafe_add(xs::SmallReal, ys::SmallReal) = tail(average(xs, ys))
 
 zeroes = Lazy.constantly(Zero())
 
-Base.:*(::Zero, ::Lazy.List) = zeroes
-Base.:*(::One, xs::Lazy.List) = xs
-Base.:*(::NegOne, xs::Lazy.List) = -xs
+Base.:*(::Zero, ::SmallReal) = zeroes
+Base.:*(::One, xs::SmallReal) = xs
+Base.:*(::NegOne, xs::SmallReal) = -xs
 
-function product_loop(xs::Lazy.List, ys::Lazy.List, acc::Lazy.List)
+function product_loop(xs::SmallReal, ys::SmallReal, acc::SmallReal)
     partial_sum = unsafe_add(acc, Zero() : head(xs) * ys) 
     return Lazy.@lazy head(partial_sum) : product_loop(tail(xs) , ys, tail(partial_sum))
 end
 
-times(xs::Lazy.List, ys::Lazy.List) = product_loop(xs, ys, zeroes)
+times(xs::SmallReal, ys::SmallReal) = product_loop(xs, ys, zeroes)
